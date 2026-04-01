@@ -1,5 +1,5 @@
 {
-  "name": "smart-expense(backend)",
+  "name": "smart-expense-backend",
   "version": "1.0.0",
   "description": "Smart Expense + Habit Tracker backend API",
   "main": "dist/server.js",
