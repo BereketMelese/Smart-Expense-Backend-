@@ -64,6 +64,7 @@ Production-ready backend API for Smart Expense + Habit Tracker Dashboard.
 ├── .env.example
 ├── eslint.config.js
 ├── package.json
+├── prisma.config.ts
 ├── tsconfig.json
 └── vitest.config.mts
 
@@ -76,6 +77,11 @@ Production-ready backend API for Smart Expense + Habit Tracker Dashboard.
 - HabitCheckIn
 
 Defined in prisma/schema.prisma.
+
+## Prisma 7 Configuration
+
+- Datasource URL is configured in prisma.config.ts.
+- The datasource block in prisma/schema.prisma contains only the provider.
 
 ## Environment Variables
 
@@ -95,6 +101,7 @@ Copy `.env.example` to `.env` and set values:
 Notes:
 - Keep `.env.example` free of real credentials.
 - For Supabase, prefer the pooler connection string and include `sslmode=require`.
+- Runtime connection logic in src/lib/prisma.ts normalizes `sslmode=require` to `sslmode=no-verify` for node-postgres adapter compatibility in local development.
 
 ## Scripts
 
