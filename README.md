@@ -79,7 +79,7 @@ Defined in prisma/schema.prisma.
 
 ## Environment Variables
 
-Copy .env.example to .env and set values:
+Copy `.env.example` to `.env` and set values:
 
 - DATABASE_URL
 - TEST_DATABASE_URL
@@ -91,6 +91,10 @@ Copy .env.example to .env and set values:
 - REFRESH_TOKEN_TTL_DAYS
 - BCRYPT_SALT_ROUNDS
 - DEFAULT_START_BALANCE
+
+Notes:
+- Keep `.env.example` free of real credentials.
+- For Supabase, prefer the pooler connection string and include `sslmode=require`.
 
 ## Scripts
 
@@ -107,7 +111,7 @@ Copy .env.example to .env and set values:
 
 1. Install dependencies:
    - npm install
-2. Start PostgreSQL:
+2. Start PostgreSQL (local Docker option):
    - docker compose up -d
 3. Apply migration:
    - npm run prisma:migrate -- --name init
@@ -126,9 +130,10 @@ Swagger UI: http://localhost:4000/docs
 
 1. Ensure PostgreSQL is running.
 2. Ensure TEST_DATABASE_URL points to a valid test database.
-3. Apply migrations to test DB using DATABASE_URL override:
+3. If you use Supabase, use a separate test database/project to avoid test data in main data.
+4. Apply migrations to test DB using DATABASE_URL override:
    - DATABASE_URL="$TEST_DATABASE_URL" npx prisma migrate deploy
-4. Run tests:
+5. Run tests:
    - npm run test
 
 ## API Endpoints
