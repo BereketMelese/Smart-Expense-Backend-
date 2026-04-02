@@ -180,8 +180,14 @@ describe("API integration", () => {
 
     expect(fetchRes.statusCode).toBe(200);
     const payload = fetchRes.json().data;
+    expect(Array.isArray(payload.items)).toBe(true);
+    expect(payload.pagination.page).toBe(1);
+    expect(payload.pagination.pageSize).toBe(10);
+    expect(payload.pagination.total).toBe(1);
+    expect(payload.pagination.totalPages).toBe(1);
     expect(payload.items.length).toBe(1);
     expect(payload.items[0].title).toBe("Lunch");
+    expect(payload.items[0].amount).toBeTypeOf("number");
   });
 
   it("blocks protected route without token", async () => {
