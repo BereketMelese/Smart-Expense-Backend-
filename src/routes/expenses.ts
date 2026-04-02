@@ -8,7 +8,7 @@ const expenseBodySchema = z.object({
   amount: z.coerce.number().positive(),
   category: z.string().min(1),
   expenseDate: z.iso.datetime(),
-  notes: z.string().optional()
+  notes: z.string().optional(),
 });
 
 const expenseUpdateSchema = expenseBodySchema.partial();
@@ -18,12 +18,37 @@ const expenseQuerySchema = z.object({
   pageSize: z.coerce.number().int().min(1).max(100).default(10),
   category: z.string().optional(),
   startDate: z.iso.datetime().optional(),
-  endDate: z.iso.datetime().optional()
+  endDate: z.iso.datetime().optional(),
 });
 
 const idParamSchema = z.object({
-  id: z.string().min(1)
+  id: z.string().min(1),
 });
+
+type ExpenseListResponse = {
+  items: Array<{
+    id: string;
+    title: string;
+    amount: number;
+    category: string;
+    expenseDate: Date;
+    notes: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+    userId: string;
+  }>;
+  pagination: {
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+  };
+};
+
+type ExpenseListEnvelope = {
+  message: string;
+  data: ExpenseListResponse;
+};
 
 const expensesRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get("/", { preHandler: fastify.authenticate }, async (request) => {
@@ -36,10 +61,10 @@ const expensesRoutes: FastifyPluginAsync = async (fastify) => {
         ? {
             expenseDate: {
               ...(query.startDate ? { gte: new Date(query.startDate) } : {}),
-              ...(query.endDate ? { lte: new Date(query.endDate) } : {})
-            }
+              ...(query.endDate ? { lte: new Date(query.endDate) } : {}),
+            },
           }
-        : {})
+        : {}),
     };
 
     const [items, total] = await Promise.all([
@@ -47,57 +72,63 @@ const expensesRoutes: FastifyPluginAsync = async (fastify) => {
         where,
         orderBy: { expenseDate: "desc" },
         skip: (query.page - 1) * query.pageSize,
-        take: query.pageSize
+        take: query.pageSize,
       }),
-      fastify.prisma.expense.count({ where })
+      fastify.prisma.expense.count({ where }),
     ]);
 
-    return {
+    const response: ExpenseListEnvelope = {
       message: "Expenses fetched",
       data: {
         items: items.map((item: any) => ({
           ...item,
-          amount: Number(item.amount)
+          amount: Number(item.amount),
         })),
         pagination: {
           page: query.page,
           pageSize: query.pageSize,
           total,
-          totalPages: Math.ceil(total / query.pageSize)
-        }
-      }
+          totalPages: Math.ceil(total / query.pageSize),
+        },
+      },
     };
+
+    return response;
   });
 
-  fastify.post("/", { preHandler: fastify.authenticate }, async (request, reply) => {
-    const body = validateOrThrow(expenseBodySchema, request.body);
+  fastify.post(
+    "/",
+    { preHandler: fastify.authenticate },
+    async (request, reply) => {
+      const body = validateOrThrow(expenseBodySchema, request.body);
 
-    const created = await fastify.prisma.expense.create({
-      data: {
-        userId: request.user.sub,
-        title: body.title,
-        amount: body.amount,
-        category: body.category,
-        expenseDate: new Date(body.expenseDate),
-        notes: body.notes
-      }
-    });
+      const created = await fastify.prisma.expense.create({
+        data: {
+          userId: request.user.sub,
+          title: body.title,
+          amount: body.amount,
+          category: body.category,
+          expenseDate: new Date(body.expenseDate),
+          notes: body.notes,
+        },
+      });
 
-    reply.status(201).send({
-      message: "Expense created",
-      data: {
-        ...created,
-        amount: Number(created.amount)
-      }
-    });
-  });
+      reply.status(201).send({
+        message: "Expense created",
+        data: {
+          ...created,
+          amount: Number(created.amount),
+        },
+      });
+    },
+  );
 
   fastify.put("/:id", { preHandler: fastify.authenticate }, async (request) => {
     const params = validateOrThrow(idParamSchema, request.params);
     const body = validateOrThrow(expenseUpdateSchema, request.body);
 
     const existing = await fastify.prisma.expense.findFirst({
-      where: { id: params.id, userId: request.user.sub }
+      where: { id: params.id, userId: request.user.sub },
     });
 
     if (!existing) {
@@ -110,37 +141,43 @@ const expensesRoutes: FastifyPluginAsync = async (fastify) => {
         ...(body.title !== undefined ? { title: body.title } : {}),
         ...(body.amount !== undefined ? { amount: body.amount } : {}),
         ...(body.category !== undefined ? { category: body.category } : {}),
-        ...(body.expenseDate !== undefined ? { expenseDate: new Date(body.expenseDate) } : {}),
-        ...(body.notes !== undefined ? { notes: body.notes } : {})
-      }
+        ...(body.expenseDate !== undefined
+          ? { expenseDate: new Date(body.expenseDate) }
+          : {}),
+        ...(body.notes !== undefined ? { notes: body.notes } : {}),
+      },
     });
 
     return {
       message: "Expense updated",
       data: {
         ...updated,
-        amount: Number(updated.amount)
+        amount: Number(updated.amount),
+      },
+    };
+  });
+
+  fastify.delete(
+    "/:id",
+    { preHandler: fastify.authenticate },
+    async (request) => {
+      const params = validateOrThrow(idParamSchema, request.params);
+
+      const existing = await fastify.prisma.expense.findFirst({
+        where: { id: params.id, userId: request.user.sub },
+      });
+
+      if (!existing) {
+        throw new ApiError(404, "NOT_FOUND", "Expense not found");
       }
-    };
-  });
 
-  fastify.delete("/:id", { preHandler: fastify.authenticate }, async (request) => {
-    const params = validateOrThrow(idParamSchema, request.params);
+      await fastify.prisma.expense.delete({ where: { id: params.id } });
 
-    const existing = await fastify.prisma.expense.findFirst({
-      where: { id: params.id, userId: request.user.sub }
-    });
-
-    if (!existing) {
-      throw new ApiError(404, "NOT_FOUND", "Expense not found");
-    }
-
-    await fastify.prisma.expense.delete({ where: { id: params.id } });
-
-    return {
-      message: "Expense deleted"
-    };
-  });
+      return {
+        message: "Expense deleted",
+      };
+    },
+  );
 };
 
 export default expensesRoutes;
