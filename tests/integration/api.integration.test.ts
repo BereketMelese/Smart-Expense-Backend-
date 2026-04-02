@@ -7,6 +7,7 @@ async function clearDb(): Promise<void> {
   await app.prisma.habitCheckIn.deleteMany();
   await app.prisma.habit.deleteMany();
   await app.prisma.expense.deleteMany();
+  await app.prisma.passwordResetToken.deleteMany();
   await app.prisma.refreshToken.deleteMany();
   await app.prisma.user.deleteMany();
 }
@@ -88,6 +89,55 @@ describe("API integration", () => {
     expect(refreshRes.statusCode).toBe(200);
     expect(refreshRes.json().data.accessToken).toBeTypeOf("string");
     expect(refreshRes.json().data.refreshToken).toBeTypeOf("string");
+  });
+
+  it("forgot and reset password flow", async () => {
+    const registerRes = await app.inject({
+      method: "POST",
+      url: "/api/auth/register",
+      payload: {
+        name: "Reset User",
+        email: "reset@example.com",
+        password: "password123",
+      },
+    });
+
+    expect(registerRes.statusCode).toBe(201);
+
+    const forgotRes = await app.inject({
+      method: "POST",
+      url: "/api/auth/forgot-password",
+      payload: {
+        email: "reset@example.com",
+      },
+    });
+
+    expect(forgotRes.statusCode).toBe(200);
+    const forgotJson = forgotRes.json();
+    const resetToken = forgotJson.data.resetToken as string;
+    expect(resetToken).toBeTypeOf("string");
+
+    const resetRes = await app.inject({
+      method: "POST",
+      url: "/api/auth/reset-password",
+      payload: {
+        resetToken,
+        password: "newpassword123",
+      },
+    });
+
+    expect(resetRes.statusCode).toBe(200);
+
+    const loginRes = await app.inject({
+      method: "POST",
+      url: "/api/auth/login",
+      payload: {
+        email: "reset@example.com",
+        password: "newpassword123",
+      },
+    });
+
+    expect(loginRes.statusCode).toBe(200);
   });
 
   it("expense create and fetch", async () => {
