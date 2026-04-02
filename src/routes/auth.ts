@@ -11,6 +11,7 @@ const registerSchema = z.object({
   email: z.email().toLowerCase(),
   password: z.string().min(8),
   avatarUrl: z.url().optional(),
+  startingBalance: z.coerce.number().nonnegative().optional(),
 });
 
 const loginSchema = z.object({
@@ -41,12 +42,14 @@ function mapUser(user: {
   email: string;
   avatarUrl: string | null;
   createdAt: Date;
+  startingBalance: unknown;
 }) {
   return {
     id: user.id,
     name: user.name,
     email: user.email,
     avatarUrl: user.avatarUrl,
+    startingBalance: Number(user.startingBalance),
     createdAt: user.createdAt,
   };
 }
@@ -76,6 +79,7 @@ const authRoutes: FastifyPluginAsync = async (fastify) => {
           email: body.email,
           passwordHash,
           avatarUrl: body.avatarUrl,
+          startingBalance: body.startingBalance ?? env.DEFAULT_START_BALANCE,
         },
       });
 
@@ -225,6 +229,7 @@ const authRoutes: FastifyPluginAsync = async (fastify) => {
         name: true,
         email: true,
         avatarUrl: true,
+        startingBalance: true,
         createdAt: true,
       },
     });
@@ -235,7 +240,10 @@ const authRoutes: FastifyPluginAsync = async (fastify) => {
 
     return {
       message: "Current user fetched",
-      data: user,
+      data: {
+        ...user,
+        startingBalance: Number(user.startingBalance),
+      },
     };
   });
 

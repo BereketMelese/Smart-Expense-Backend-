@@ -12,6 +12,7 @@ import authRoutes from "./routes/auth";
 import dashboardRoutes from "./routes/dashboard";
 import expensesRoutes from "./routes/expenses";
 import habitsRoutes from "./routes/habits";
+import incomesRoutes from "./routes/incomes";
 
 export async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify({ logger: true });
@@ -20,7 +21,7 @@ export async function buildApp(): Promise<FastifyInstance> {
 
   app.register(cors, {
     origin: [env.APP_ORIGIN],
-    credentials: true
+    credentials: true,
   });
 
   app.register(rateLimit, {
@@ -28,32 +29,33 @@ export async function buildApp(): Promise<FastifyInstance> {
     errorResponseBuilder: (_request, context) => ({
       message: "Too many requests",
       code: "RATE_LIMITED",
-      details: { max: context.max, timeWindow: context.after }
-    })
+      details: { max: context.max, timeWindow: context.after },
+    }),
   });
 
   app.register(swagger, {
     openapi: {
       info: {
         title: "Smart Expense API",
-        version: "1.0.0"
+        version: "1.0.0",
       },
       servers: [{ url: "http://localhost:4000" }],
       tags: [
         { name: "auth" },
         { name: "expenses" },
+        { name: "incomes" },
         { name: "habits" },
-        { name: "dashboard" }
-      ]
-    }
+        { name: "dashboard" },
+      ],
+    },
   });
 
   app.register(swaggerUi, {
-    routePrefix: "/docs"
+    routePrefix: "/docs",
   });
 
   app.register(jwt, {
-    secret: env.JWT_ACCESS_SECRET
+    secret: env.JWT_ACCESS_SECRET,
   });
 
   app.register(authPlugin);
@@ -64,10 +66,11 @@ export async function buildApp(): Promise<FastifyInstance> {
     async (api) => {
       api.register(authRoutes, { prefix: "/auth" });
       api.register(expensesRoutes, { prefix: "/expenses" });
+      api.register(incomesRoutes, { prefix: "/incomes" });
       api.register(habitsRoutes, { prefix: "/habits" });
       api.register(dashboardRoutes, { prefix: "/dashboard" });
     },
-    { prefix: "/api" }
+    { prefix: "/api" },
   );
 
   app.setErrorHandler((error, request, reply) => {
@@ -75,35 +78,35 @@ export async function buildApp(): Promise<FastifyInstance> {
       return reply.status(error.statusCode).send({
         message: error.message,
         code: error.code,
-        ...(error.details ? { details: error.details } : {})
+        ...(error.details ? { details: error.details } : {}),
       });
     }
 
     if ((error as { code?: string }).code === "P2002") {
       return reply.status(409).send({
         message: "Resource already exists",
-        code: "CONFLICT"
+        code: "CONFLICT",
       });
     }
 
     if ((error as { code?: string })?.code?.startsWith("P")) {
       return reply.status(400).send({
         message: "Database request failed",
-        code: "VALIDATION_ERROR"
+        code: "VALIDATION_ERROR",
       });
     }
 
     if ((error as { statusCode?: number }).statusCode === 401) {
       return reply.status(401).send({
         message: "Unauthorized",
-        code: "UNAUTHORIZED"
+        code: "UNAUTHORIZED",
       });
     }
 
     request.log.error(error);
     return reply.status(500).send({
       message: "Internal server error",
-      code: "INTERNAL_ERROR"
+      code: "INTERNAL_ERROR",
     });
   });
 

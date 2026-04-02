@@ -7,6 +7,7 @@ async function clearDb(): Promise<void> {
   await app.prisma.habitCheckIn.deleteMany();
   await app.prisma.habit.deleteMany();
   await app.prisma.expense.deleteMany();
+  await app.prisma.income.deleteMany();
   await app.prisma.passwordResetToken.deleteMany();
   await app.prisma.refreshToken.deleteMany();
   await app.prisma.user.deleteMany();
